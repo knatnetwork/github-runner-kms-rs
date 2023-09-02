@@ -1,0 +1,9 @@
+version: '3'
+
+services:
+  github-runner-kms:
+    image: knatnetwork/github-runner-kms-rs:latest
+    environment:
+      - PAT_knatnetwork=ghp_xxxxxxxxxxxxxxxx
+    ports:
+      - 3000:3000
