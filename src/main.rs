@@ -27,30 +27,13 @@ fn get_org_repo_token_mapping() -> HashMap<String, String> {
     org_repo_token_mapping
 }
 
-#[get("/<org_name>/registration-token")]
-async fn get_registration_token(org_name: String) -> String {
-    let github_api_url = format!(
-        "https://api.github.com/orgs/{}/actions/runners/registration-token",
-        org_name
-    );
-
+fn send_request(api_url: &str, token: &str) -> String {
     let mut headers = HeaderMap::new();
-    let token = ORG_REPO_TOKEN_MAPPING
-        .get(&org_name)
-        .map(|s| s.as_str())
-        .unwrap_or_else(|| "");
-    match token {
-        "" => {
-            return format!("No token found for org: {}", org_name);
-        }
-        _ => {}
-    }
     let auth_value = HeaderValue::from_str(&format!("Bearer {}", token)).unwrap();
-    // Print the auth_value to see if it is correct
     headers.insert("Authorization", auth_value);
     headers.insert("User-Agent", "GitHub Runner KMS".parse().unwrap());
-    // Send a POST request to get the registration token
-    let response = HTTP_CLIENT.post(&github_api_url).headers(headers).send();
+
+    let response = HTTP_CLIENT.post(api_url).headers(headers).send();
 
     match response {
         Ok(response) => handle_response(response),
@@ -61,6 +44,24 @@ async fn get_registration_token(org_name: String) -> String {
     }
 }
 
+#[get("/<org_name>/registration-token")]
+async fn get_registration_token(org_name: String) -> String {
+    let github_api_url = format!(
+        "https://api.github.com/orgs/{}/actions/runners/registration-token",
+        org_name
+    );
+
+    let token = ORG_REPO_TOKEN_MAPPING
+        .get(&org_name)
+        .map(|s| s.as_str())
+        .unwrap_or_else(|| "");
+    if token.is_empty() {
+        return format!("No token found for org: {}", org_name);
+    }
+
+    send_request(&github_api_url, token)
+}
+
 #[get("/<org_name>/remove-token")]
 async fn get_remove_token(org_name: String) -> String {
     let github_api_url = format!(
@@ -68,33 +69,15 @@ async fn get_remove_token(org_name: String) -> String {
         org_name
     );
 
-    let mut headers = HeaderMap::new();
     let token = ORG_REPO_TOKEN_MAPPING
         .get(&org_name)
         .map(|s| s.as_str())
         .unwrap_or_else(|| "");
-
-    match token {
-        "" => {
-            return format!("No token found for org: {}", org_name);
-        }
-        _ => {}
+    if token.is_empty() {
+        return format!("No token found for org: {}", org_name);
     }
 
-    let auth_value = HeaderValue::from_str(&format!("Bearer {}", token)).unwrap();
-    // Print the auth_value to see if it is correct
-    headers.insert("Authorization", auth_value);
-    headers.insert("User-Agent", "GitHub Runner KMS".parse().unwrap());
-    // Send a POST request to get the registration token
-    let response = HTTP_CLIENT.post(&github_api_url).headers(headers).send();
-
-    match response {
-        Ok(response) => handle_response(response),
-        Err(err) => {
-            eprintln!("HTTP request failed with error: {:?}", err);
-            "Error".to_string()
-        }
-    }
+    send_request(&github_api_url, token)
 }
 
 #[get("/repo/<github_repo_owner>/<github_repo_name>/registration-token")]
@@ -107,33 +90,14 @@ async fn get_repo_registration_token(
         github_repo_owner, github_repo_name
     );
 
-    let mut headers = HeaderMap::new();
+    let full_github_repo_name = format!("{}/{}", github_repo_owner, github_repo_name);
+
     let token = ORG_REPO_TOKEN_MAPPING
-        .get(&github_repo_owner)
+        .get(&full_github_repo_name)
         .map(|s| s.as_str())
         .unwrap_or_else(|| "");
 
-    match token {
-        "" => {
-            return format!("No token found for org: {}", github_repo_owner);
-        }
-        _ => {}
-    }
-
-    let auth_value = HeaderValue::from_str(&format!("Bearer {}", token)).unwrap();
-    // Print the auth_value to see if it is correct
-    headers.insert("Authorization", auth_value);
-    headers.insert("User-Agent", "GitHub Runner KMS".parse().unwrap());
-    // Send a POST request to get the registration token
-    let response = HTTP_CLIENT.post(&github_api_url).headers(headers).send();
-
-    match response {
-        Ok(response) => handle_response(response),
-        Err(err) => {
-            eprintln!("HTTP request failed with error: {:?}", err);
-            "Error".to_string()
-        }
-    }
+    send_request(&github_api_url, token)
 }
 
 #[get("/repo/<github_repo_owner>/<github_repo_name>/remove-token")]
@@ -143,33 +107,21 @@ async fn get_repo_remove_token(github_repo_owner: String, github_repo_name: Stri
         github_repo_owner, github_repo_name
     );
 
-    let mut headers = HeaderMap::new();
+    let full_github_repo_name = format!("{}/{}", github_repo_owner, github_repo_name);
+
     let token = ORG_REPO_TOKEN_MAPPING
-        .get(&github_repo_owner)
+        .get(&full_github_repo_name)
         .map(|s| s.as_str())
         .unwrap_or_else(|| "");
 
-    match token {
-        "" => {
-            return format!("No token found for org: {}", github_repo_owner);
-        }
-        _ => {}
+    if token.is_empty() {
+        return format!(
+            "No token found for repo: {}/{}",
+            github_repo_owner, github_repo_name
+        );
     }
 
-    let auth_value = HeaderValue::from_str(&format!("Bearer {}", token)).unwrap();
-    // Print the auth_value to see if it is correct
-    headers.insert("Authorization", auth_value);
-    headers.insert("User-Agent", "GitHub Runner KMS".parse().unwrap());
-    // Send a POST request to get the registration token
-    let response = HTTP_CLIENT.post(&github_api_url).headers(headers).send();
-
-    match response {
-        Ok(response) => handle_response(response),
-        Err(err) => {
-            eprintln!("HTTP request failed with error: {:?}", err);
-            "Error".to_string()
-        }
-    }
+    send_request(&github_api_url, token)
 }
 
 #[rocket::main]

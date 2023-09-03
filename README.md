@@ -8,7 +8,6 @@ Usage can be seen on https://github.com/knatnetwork/github-runner.
 
 ## TODO
 
-- [ ] Make docker image smaller(maybe by static link openssl?)
 - [ ] Learn more Rust
 
 ## License
