@@ -5,6 +5,7 @@ use std::collections::HashMap;
 
 use lazy_static::lazy_static;
 mod response_handler;
+mod router;
 
 use response_handler::handle_response;
 
@@ -29,7 +30,7 @@ fn get_org_repo_token_mapping() -> HashMap<String, String> {
 
 fn send_request(api_url: &str, token: &str) -> String {
     let mut headers = HeaderMap::new();
-    let auth_value = HeaderValue::from_str(&format!("Bearer {}", token)).unwrap();
+    let auth_value = HeaderValue::from_str(&format!("token {}", token)).unwrap();
     headers.insert("Authorization", auth_value);
     headers.insert("User-Agent", "GitHub Runner KMS".parse().unwrap());
 
@@ -39,89 +40,9 @@ fn send_request(api_url: &str, token: &str) -> String {
         Ok(response) => handle_response(response),
         Err(err) => {
             eprintln!("HTTP request failed with error: {:?}", err);
-            "Error".to_string()
+            String::from("Error")
         }
     }
-}
-
-#[get("/<org_name>/registration-token")]
-async fn get_registration_token(org_name: String) -> String {
-    let github_api_url = format!(
-        "https://api.github.com/orgs/{}/actions/runners/registration-token",
-        org_name
-    );
-
-    let token = ORG_REPO_TOKEN_MAPPING
-        .get(&org_name)
-        .map(|s| s.as_str())
-        .unwrap_or_else(|| "");
-    if token.is_empty() {
-        return format!("No token found for org: {}", org_name);
-    }
-
-    send_request(&github_api_url, token)
-}
-
-#[get("/<org_name>/remove-token")]
-async fn get_remove_token(org_name: String) -> String {
-    let github_api_url = format!(
-        "https://api.github.com/orgs/{}/actions/runners/remove-token",
-        org_name
-    );
-
-    let token = ORG_REPO_TOKEN_MAPPING
-        .get(&org_name)
-        .map(|s| s.as_str())
-        .unwrap_or_else(|| "");
-    if token.is_empty() {
-        return format!("No token found for org: {}", org_name);
-    }
-
-    send_request(&github_api_url, token)
-}
-
-#[get("/repo/<github_repo_owner>/<github_repo_name>/registration-token")]
-async fn get_repo_registration_token(
-    github_repo_owner: String,
-    github_repo_name: String,
-) -> String {
-    let github_api_url = format!(
-        "https://api.github.com/repos/{}/{}/actions/runners/registration-token",
-        github_repo_owner, github_repo_name
-    );
-
-    let full_github_repo_name = format!("{}/{}", github_repo_owner, github_repo_name);
-
-    let token = ORG_REPO_TOKEN_MAPPING
-        .get(&full_github_repo_name)
-        .map(|s| s.as_str())
-        .unwrap_or_else(|| "");
-
-    send_request(&github_api_url, token)
-}
-
-#[get("/repo/<github_repo_owner>/<github_repo_name>/remove-token")]
-async fn get_repo_remove_token(github_repo_owner: String, github_repo_name: String) -> String {
-    let github_api_url = format!(
-        "https://api.github.com/repos/{}/{}/actions/runners/remove-token",
-        github_repo_owner, github_repo_name
-    );
-
-    let full_github_repo_name = format!("{}/{}", github_repo_owner, github_repo_name);
-
-    let token = ORG_REPO_TOKEN_MAPPING
-        .get(&full_github_repo_name)
-        .map(|s| s.as_str())
-        .unwrap_or_else(|| "");
-
-    if token.is_empty() {
-        return format!(
-            "No token found for repo: {}/{}",
-            github_repo_owner, github_repo_name
-        );
-    }
-
-    send_request(&github_api_url, token)
 }
 
 #[rocket::main]
@@ -130,10 +51,10 @@ async fn main() -> Result<(), rocket::Error> {
         .mount(
             "/",
             routes![
-                get_registration_token,
-                get_remove_token,
-                get_repo_registration_token,
-                get_repo_remove_token
+                router::get_registration_token,
+                router::get_remove_token,
+                router::get_repo_registration_token,
+                router::get_repo_remove_token
             ],
         )
         .launch()

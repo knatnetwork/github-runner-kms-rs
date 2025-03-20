@@ -1,5 +1,5 @@
 # docker build . -t knatnetwork/github-runner-kms-rs:latest-amd64
-FROM rust:1.72-alpine as builder
+FROM rust:1.85-alpine AS builder
 
 WORKDIR /app
 

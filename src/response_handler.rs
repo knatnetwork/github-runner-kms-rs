@@ -12,12 +12,12 @@ pub fn handle_response(response: Response) -> String {
             Ok(token_response) => token_response.token,
             Err(err) => {
                 eprintln!("Failed to parse JSON response: {:?}", err);
-                "Error".to_string()
+                String::from("Error")
             }
         }
     } else {
         eprintln!("HTTP request failed with status: {:?}", response.status());
         eprintln!("HTTP request failed with body: {:?}", response.text());
-        "Error".to_string()
+        String::from("Error")
     }
 }
